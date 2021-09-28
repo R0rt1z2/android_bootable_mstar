@@ -1,0 +1,63 @@
+#!/usr/bin/python
+
+
+## This program defaults IV to 0
+
+import os
+import sys
+from Crypto.Cipher import AES
+
+def usage():
+    print >> sys.stderr, ''
+    print >> sys.stderr, '  cbccrypt <mode> <input filename> <output filename> <key filename>'
+    print >> sys.stderr, ''
+    print >> sys.stderr, '  <mode>: 0 = encrypt, 1 = decrypt'
+    print >> sys.stderr, ''
+    print >> sys.stderr, '  example: cbccrypt 0 file file.aes key.bin'
+    print >> sys.stderr, ''
+    sys.exit(1)
+
+def main(argv):
+    if len(argv) != 4:
+        usage()
+
+    mode = argv[0]
+    infile = argv[1]
+    outfile = argv[2]
+    keyfile = argv[3]
+
+    if mode != '0' and mode != '1':
+        print >> sys.stderr, 'ERROR: mode is either 0 or 1'
+        usage()
+
+    if not os.path.isfile(infile):
+        print >> sys.stderr, 'ERROR: input filename does not exist'
+        usage()
+
+    if not os.path.isfile(keyfile):
+        print >> sys.stderr, 'ERROR: key filename does not exist'
+        usage()
+
+    with open(keyfile, 'rb') as fp:
+        content = fp.read()
+        if len(content) != 16:
+            print >> sys.stderr, 'ERROR: key must be 16-byte'
+            usage()
+
+    decrypt = int(mode)
+
+    with open(infile, 'rb') as ifp:
+        with open(keyfile, 'rb') as kfp:
+            with open(outfile, 'wb') as ofp:
+                indata = ifp.read()
+                keydata = kfp.read()
+
+                if decrypt == 0: # encryption
+                    outdata = AES.new(keydata, AES.MODE_CBC, IV='\0' * 16).encrypt(indata)
+                elif dectypt == 1: # decryption
+                    outdata = AES.new(keydata, AES.MODE_CBC, IV='\0' * 16).decrypt(indata)
+
+                ofp.write(outdata)
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

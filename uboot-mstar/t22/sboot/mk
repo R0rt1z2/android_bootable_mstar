@@ -1,0 +1,22 @@
+#!/bin/bash
+
+################################################################################
+#
+#  mk
+#
+#  Copyright (c) 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+################################################################################
+
+# Configuration file for the build.
+CONFIG_FILE="${PWD}/mk_config"
+source "${CONFIG_FILE}"
+
+MBOOT_DEFCONFIG="configs/M7322/.config.m7322.android.MB170.rom_emmc_64bit.optee.kdrv.asymetric_UMA_Amazon"
+MBOOT_OUT="out/obj/MBOOT_OBJ"
+TOOLSCHAINPATH="${CROSS_COMPILER_PATH}/bin/"
+
+mkdir -p "${MBOOT_OUT}"
+cp "${MBOOT_DEFCONFIG}" ".config"
+yes "" | PATH="${PATH}:${TOOLSCHAINPATH}" make -j1 -C . O="${PWD}/${MBOOT_OUT}" oldconfig
+PATH="${PATH}:${TOOLSCHAINPATH}" make UFBL_PROJECT=$1 -j1 -C . PRODUCT_OUT="${PWD}/out" O="${PWD}/${MBOOT_OUT}" OUT="${PWD}/out" TOOLSCHAINPATH="${TOOLSCHAINPATH}"

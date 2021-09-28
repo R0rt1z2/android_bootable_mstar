@@ -1,0 +1,34 @@
+# Copyright (C) 2018 Amazon.com Inc. or its affiliates.  All Rights Reserved.
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = IdmeLib
+  FILE_GUID                      = e64e0c1b-894b-4379-a550-d72c744e4673
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = IdmeLib
+
+#
+# The following information is for reference only and not required by the build tools.
+#
+#  VALID_ARCHITECTURES           = ARM AARCH64
+#
+
+[Sources]
+  cmd_idme.c
+  cmd_idme_v2_0.c
+
+[BuildOptions.AARCH64]
+	GCC:*_*_*_CC_FLAGS = -DCONFIG_IDME -DIDME_UPDATE_TABLE
+
+[Packages]
+  StdLib/StdLib.dec
+  MdePkg/MdePkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  ufbl-features/ufbl-features.dec
+  IdmePlatformPkg/IdmePlatformPkg.dec
+
+[LibraryClasses]
+  LibC
+  LibStdio
+  FdtLib

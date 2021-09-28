@@ -1,0 +1,75 @@
+//turn on DMD_PLL(MainPLL), MIPS_PLL, DSP_PLL, DAC_PLL, SYN_PLL, UPLL
+
+swch 4
+
+//DMD_PLL(MainPLL)
+wriu -w 0x101e38 0x0000
+wriu -w 0x112002 0x0070
+wriu -w 0x11286a 0x1e03
+wait 1                    // delay 1ms
+wriu -w 0x11286a 0x0603
+wait 1                    // delay 1ms
+wriu -w 0x112866 0x1201
+wriu -w 0x112860 0x1c01
+wriu -w 0x112840 0x0000
+wriu -w 0x112878 0x0000
+wriu -w 0x112864 0x0700   // Kratos add for 123MHz
+wriu -w 0x1128e0 0x0003   // Kratos add for MPLL_CLK_RF 432MHz
+wriu -w 0x101e38 0x0300
+
+
+//Kratos update
+//MIPS_PLL
+wriu -w 0x110c34 0x003f   // PLL Freq = 0x3f*12 = 756 MHz
+wriu -w 0x110c30 0x0005
+wriu -w 0x110c2a 0x000f
+
+//DSP_PLL
+wriu -w 0x110c80 0x0028
+wriu -w 0x110c82 0x0000
+
+// Audio DSP Frequency
+wriu -w 0x110c86 0x0038	// PLL Freq = 0x38*6 = 336 MHz
+
+//DAC_PLL
+wriu    0x0012112a 0x00000000  //reg_dacpll_pd[0],
+wriu    0x0012112d 0x00000006  //reg_dacpll_loop_div[11:8], reg_dacpll_dac_mode_en[4]
+wriu -w 0x0012112e 0x00000807  //reg_dacpll_dr_div  [4:0], reg_dacpll_pdreg[8], reg_dacpll_in_select[11]
+
+// dac synth
+wriu -w 0x00121162 0x00009999  // [15:0] reg_synth_set_15_0
+wriu -w 0x00121164 0x00000019  // [15:0] reg_synth_set_31_16
+wriu -w 0x0012116a 0x00000002  // [0] enable ssc 1: enalbe, 0:disable
+                               // [1] ssc_sync
+wriu -w 0x00121166 0x00000007  // step
+wriu -w 0x00121168 0x00000445  // span
+
+wriu    0x00101a00 0x00000031  // [5] reg_sel_ext_hdclk, CLK_OUT_DAC is from DACPLL
+
+//SYN_PLL
+wriu -w 0x1031b8 0x0000
+
+//UPLL
+wriu    0x100700 0x0a
+wriu    0x100700 0x28
+
+wriu -w 0x103a88 0x040f
+wriu -w 0x103aa0 0x8051
+wriu -w 0x103aa2 0x2088
+wriu -w 0x103a80 0x6bc3
+wriu -w 0x103a80 0x69c3
+wriu -w 0x103a80 0x0001
+
+//Kratos add
+//UPLL(P1)
+wriu -w 0x103a08 0x040f
+wriu -w 0x103a20 0x8051
+wriu -w 0x103a22 0x2088
+wriu -w 0x103a00 0x6bc3
+wriu -w 0x103a00 0x69c3
+wriu -w 0x103a00 0x0001
+
+
+
+
+

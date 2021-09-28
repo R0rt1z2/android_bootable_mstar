@@ -1,0 +1,54 @@
+# Syntax is as follows
+#
+## Inclusion Rules
+# Are intended to be followed in order
+# + include files matched by pattern in the working directory
+# - exclude files matched by pattern from the working directory
+#   ** Any files not explicitly matched should fail and trigger a discussion with the component team
+#
+# Substitute @@product@@ with the product target - http://docs.oracle.com/javase/tutorial/essential/io/fileOps.html#glob
+# * matches only the current directory
+# ** matches directory and any subdirectories
+#
+# TODO, need to work out how to add conditional information.
+
+
+
++ bin/linux-x86/*				# Build Support?
++ build/*					# Build Support?
+- features/bcb/*				# Not needed for non-Pingpong platforms
+- features/common_openssl/*			# Not needed for non-uboot platforms
++ features/fastboot_extensions/*
++ features/fastboot_lockdown/*
++ features/fos_flags/*
++ features/idme/idme_platform_@@platform@@.c
+- features/idme/idme_platform_*
++ features/idme/cmd_idme.c
++ features/idme/idme_utilities.c
++ features/idme/include/idme_default_table_@@product@@.h
++ features/idme/include/idme_default_table.h
+- features/idme/include/idme_default_table_*.h
++ features/idme/** 					# Include remainder of build infrastructure
++ features/libtom*/**				# Conditional on tomcrypt (usually paired with uboot
+- features/life_cycle_reasons/*
+- features/ramdump/*
++ features/*  						# Only the build support files in features/
++ features/secure_boot/amzn_secure_boot.h
++ features/secure_boot/@@product@@.conf
+- features/secure_boot/*.conf
+- features/secure_boot/image_verify_openssl.c
++ features/secure_boot/image_verify*
+- features/secure_boot/engineering_cert.key
+- features/secure_boot/engineering_cert.pem
+- features/secure_boot/production_cert.pem
+- features/secure_boot/gen_verinfo.mtk.py
+- features/secure_boot/sign_image.sh
+- features/secure_boot/verify_image.sh
++ features/secure_boot/*				# Remaining files should be only makefiles
++ features/unlock/*
++ include/*
++ makefile
+- tests/**
++ project/@@product@@.mk
++ project/ufbl_common*.mk
+- project/*.mk

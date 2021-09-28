@@ -1,0 +1,15 @@
+Generate and flash RomBoot.bin steps
+
+1. If there has no mboot on your target board, then 
+step 1: copy "mboot.bin" into this folder
+step 2: execute "sh buildROMCodeBin_NAND.sh" or "sh buildROMCodeBin_SPINAND.sh" in your linux enviroment
+step 3: "RomBoot.bin" can be generated in the same folder
+step 4: Then, you can flash "RomBoot.bin" by TV tool, please refer to the SOP in NAND_Programing_Tool folder
+
+
+2. If there has mboot on your target board, then you can just update mboot by tftp
+step 1: put the "mboot.bin" that you want to update in this folder
+        (option)You can use the mBoot from //THEALE/Uranus/Kratos/DDI_Package/ddi_pkg_linux/bsp/linux/Kratos_Mbootbin
+step 2: set the Base Directory of tftp program to this path
+step 3: Enter mboot
+step 4: type "mstar writecis_nand.txt" or "mstar writecis_spinand.txt"

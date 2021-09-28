@@ -1,0 +1,278 @@
+# ==========================================================================
+# Build system
+# ==========================================================================
+
+BB_VER = $(VERSION).$(PATCHLEVEL).$(SUBLEVEL)$(EXTRAVERSION)
+export BB_VER
+SKIP_STRIP = n
+
+# -std=gnu99 needed for [U]LLONG_MAX on some systems
+CPPFLAGS += $(call cc-option,-std=gnu99,)
+
+CPPFLAGS += \
+	-Iinclude -I$(O)/out \
+	$(if $(KBUILD_SRC),-Iinclude2 -I$(srctree)/include) \
+	-include include/autoconf.h \
+	-D_GNU_SOURCE -DNDEBUG \
+	$(if $(CONFIG_LFS),-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64) \
+	-D"BB_VER=KBUILD_STR($(BB_VER))" -DBB_BT=AUTOCONF_TIMESTAMP
+
+CFLAGS += $(call cc-option,-Wall,)
+CFLAGS += $(call cc-option,-Wshadow,)
+CFLAGS += $(call cc-option,-Wwrite-strings,)
+CFLAGS += $(call cc-option,-Wundef,)
+CFLAGS += $(call cc-option,-Wstrict-prototypes,)
+CFLAGS += $(call cc-option,-Wunused -Wunused-parameter,)
+CFLAGS += $(call cc-option,-Wunused-function -Wunused-value,)
+CFLAGS += $(call cc-option,-Wmissing-prototypes -Wmissing-declarations,)
+CFLAGS += $(call cc-option,-Wno-int-to-pointer-cast -Wno-unused-but-set-variable,)
+# warn about C99 declaration after statement
+CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
+# If you want to add more -Wsomething above, make sure that it is
+# still possible to build bbox without warnings.
+
+ifeq ($(CONFIG_WERROR),y)
+CFLAGS += $(call cc-option,-Werror,)
+endif
+# gcc 3.x emits bogus "old style proto" warning on find.c:alloc_action()
+CFLAGS += $(call cc-ifversion, -ge, 0400, -Wold-style-definition)
+
+CFLAGS += $(call cc-option,-fno-builtin-strlen -finline-limit=0 -fomit-frame-pointer -ffunction-sections -fdata-sections,)
+# -fno-guess-branch-probability: prohibit pseudo-random guessing
+# of branch probabilities (hopefully makes bloatcheck more stable):
+CFLAGS += $(call cc-option,-fno-guess-branch-probability,)
+CFLAGS += $(call cc-option,-funsigned-char -static-libgcc,)
+CFLAGS += $(call cc-option,-falign-functions=1 -falign-jumps=1 -falign-labels=1 -falign-loops=1,)
+
+# FIXME: These warnings are at least partially to be concerned about and should
+# be fixed..
+#CFLAGS += $(call cc-option,-Wconversion,)
+
+CFLAGS += $(call cc-option,-mno-abicalls,)
+CFLAGS += $(call cc-option,-fno-pic,)
+
+ifneq ($(CONFIG_DEBUG),y)
+CFLAGS += $(call cc-option,-Os,)
+else
+CFLAGS += $(call cc-option,-g,)
+#CFLAGS += "-D_FORTIFY_SOURCE=2"
+ifeq ($(CONFIG_DEBUG_PESSIMIZE),y)
+CFLAGS += $(call cc-option,-O0,)
+else
+CFLAGS += $(call cc-option,-Os,)
+endif
+endif
+CFLAGS += $(call cc-option,-G 0,)
+ifeq ($(CONFIG_MCU_MIPS32),y)
+CFLAGS += $(call cc-option,-mips32r2,-mips32)
+endif
+
+# If arch/$(ARCH)/Makefile did not override it (with, say, -fPIC)...
+ARCH_FPIC ?= -fpic
+ARCH_Fabc123 ?= -fabc123
+ARCH_abc123 ?= -abc123
+
+ifeq ($(CONFIG_STATIC),y)
+CFLAGS_sboot += -static
+endif
+
+ifeq ($(CONFIG_abc123),y)
+CFLAGS_sboot += $(ARCH_abc123)
+CFLAGS += $(ARCH_Fabc123)
+endif
+
+ifneq ($(CONFIG_SBOOT_EXTRA_CFLAGS),)
+CFLAGS += $(strip $(subst ",,$(CONFIG_SBOOT_EXTRA_CFLAGS)))
+#"))
+endif
+
+LDLIBS +=
+
+ifeq ($(CONFIG_PAM),y)
+LDLIBS += pam pam_misc
+endif
+
+ifeq ($(CONFIG_SELINUX),y)
+LDLIBS += selinux sepol
+endif
+
+ifeq ($(CONFIG_EFENCE),y)
+LDLIBS += efence
+endif
+
+ifeq ($(CONFIG_DMALLOC),y)
+LDLIBS += dmalloc
+endif
+
+ifeq ($(CONFIG_BOOTING_FROM_EXT_SPI_WITH_CPU),y)
+ifeq ($(findstring $(CONFIG_MSTAR_MACAN)$(CONFIG_MSTAR_M3822)$(CONFIG_MSTAR_MAZDA), y),y)
+LDLIBS += gcc
+endif
+endif
+
+# If a flat binary should be built, CFLAGS_sboot="-elf2flt"
+# env var should be set for make invocation.
+# Here we check whether CFLAGS_sboot indeed contains that flag.
+# (For historical reasons, we also check LDFLAGS, which doesn't
+# seem to be entirely correct variable to put "-elf2flt" into).
+W_ELF2FLT = -elf2flt
+ifneq (,$(findstring $(W_ELF2FLT),$(LDFLAGS) $(CFLAGS_sboot)))
+SKIP_STRIP = y
+endif
+
+# Busybox is a stack-fatty so make sure we increase default size
+# TODO: use "make stksizes" to find & fix big stack users
+# (we stole scripts/checkstack.pl from the kernel... thanks guys!)
+# Reduced from 20k to 16k in 1.9.0.
+FLTFLAGS += -s 16000
+
+
+AFLAGS = $(CFLAGS)
+
+# SBoot could not be linked with std libraries
+LDFLAGS += -nostdlib
+
+SBOOT_LDFLAGS :=
+
+# compiler and linker options for fixing CA53 Errata 835769
+ifeq ($(CONFIG_CA53_ERRATA_835769_FIX_PATCH),y)
+CFLAGS +=-mfix-cortex-a53-835769
+SBOOT_LDFLAGS  +=-Wl,--fix-cortex-a53-835769
+endif
+
+ifeq ($(CONFIG_MSTAR_MAINZ),y)
+CHIP_FOLDER:=mainz
+endif
+
+ifeq ($(CONFIG_MSTAR_MASERATI),y)
+CHIP_FOLDER:=maserati
+endif
+
+ifeq ($(CONFIG_MSTAR_M7821),y)
+CHIP_FOLDER:=M7821
+endif
+
+ifeq ($(CONFIG_MSTAR_MOONEY),y)
+CHIP_FOLDER:=mooney
+endif
+
+ifeq ($(CONFIG_MSTAR_MAXIM),y)
+CHIP_FOLDER:=maxim
+endif
+
+ifeq ($(CONFIG_MSTAR_M7621),y)
+CHIP_FOLDER:=M7621
+endif
+
+ifeq ($(CONFIG_MSTAR_M3822),y)
+CHIP_FOLDER:=M3822
+endif
+
+ifeq ($(CONFIG_MSTAR_M7622),y)
+CHIP_FOLDER:=M7622
+endif
+
+ifeq ($(CONFIG_MSTAR_M7322),y)
+CHIP_FOLDER:=M7322
+endif
+
+ifeq ($(CONFIG_MSTAR_M5621),y)
+CHIP_FOLDER:=M5621
+endif
+
+ifeq ($(CONFIG_MSTAR_M7221),y)
+CHIP_FOLDER:=M7221
+endif
+
+ifeq ($(CONFIG_MSTAR_MUSTANG),y)
+CHIP_FOLDER:=mustang
+endif
+
+ifeq ($(CONFIG_MSTAR_CELTICS),y)
+CHIP_FOLDER:=celtics
+endif
+
+ifeq ($(CONFIG_MSTAR_MILAN),y)
+CHIP_FOLDER:=milan
+endif
+
+ifeq ($(CONFIG_MSTAR_M5321),y)
+CHIP_FOLDER:=M5321
+endif
+
+ifeq ($(CONFIG_MSTAR_MARLON),y)
+CHIP_FOLDER:=marlon
+endif
+
+ifeq ($(CONFIG_MSTAR_MUNICH),y)
+CHIP_FOLDER:=munich
+endif
+
+ifeq ($(CONFIG_MSTAR_MATISSE),y)
+CHIP_FOLDER:=matisse
+endif
+
+ifeq ($(CONFIG_MSTAR_MACAN),y)
+CHIP_FOLDER:=macan
+endif
+
+ifeq ($(CONFIG_MSTAR_MAZDA),y)
+CHIP_FOLDER:=mazda
+endif
+
+ifeq ($(CONFIG_MSTAR_EDEN),y)
+ifeq ($(CONFIG_MSTAR_EDEN_PM),y)
+CHIP_FOLDER:=eden/pm
+else
+CHIP_FOLDER:=eden
+endif
+endif
+
+ifeq ($(CONFIG_MSTAR_MAYA),y)
+ifeq ($(CONFIG_MSTAR_MAYA_PM),y)
+CHIP_FOLDER:=maya/pm
+else
+CHIP_FOLDER:=maya
+endif
+endif
+
+ifeq ($(CONFIG_MSTAR_WHISKY),y)
+ifeq ($(CONFIG_MSTAR_WHISKY_PM),y)
+CHIP_FOLDER:=whisky/pm
+else
+CHIP_FOLDER:=whisky
+endif
+endif
+
+ifeq ($(CONFIG_MSTAR_MELODY),y)
+ifeq ($(CONFIG_MSTAR_MELODY_PM),y)
+CHIP_FOLDER:=melody/pm
+else
+CHIP_FOLDER:=melody
+endif
+endif
+
+ifeq ($(CONFIG_MSTAR_EULER),y)
+ifeq ($(CONFIG_MSTAR_EULER_PM),y)
+CHIP_FOLDER:=euler/pm
+else
+CHIP_FOLDER:=euler
+endif
+endif
+
+ifeq ($(CONFIG_MSTAR_NASA),y)
+ifeq ($(CONFIG_MSTAR_NASA_PM),y)
+CHIP_FOLDER:=nasa/pm
+else
+CHIP_FOLDER:=nasa
+endif
+endif
+
+ifeq ($(CONFIG_MSTAR_KRATOS),y)
+CHIP_FOLDER:=kratos
+TOOLCHAIN_VERSION:=4.3.2
+endif
+
+ifeq ($(CONFIG_MSTAR_TITANIA_BD_FPGA),y)
+BOARD_NAME:=fpga
+endif

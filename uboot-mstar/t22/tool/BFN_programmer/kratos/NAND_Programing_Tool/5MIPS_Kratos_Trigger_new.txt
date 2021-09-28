@@ -1,0 +1,7 @@
+// MIPS
+
+// ¥s¿ôMIPS±qDRAM¶}¾÷
+swch 3
+//wriu -b 0x2E53 0xC0 0xC0
+wriu -b 0x0E53 0xC0 0xC0
+wait 100

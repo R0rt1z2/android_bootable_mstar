@@ -1,0 +1,289 @@
+####################################################################
+#######                    Makefile.mboot                    #######
+####################################################################
+
+#include mboot.mk
+
+
+
+ifeq ($(CONFIG_NON_OS), y)
+ifeq (y, $(findstring y, $(CONFIG_MSTAR_MARIA10_PM) \
+                        $(CONFIG_MSTAR_MACAW12_PM) \
+                        $(CONFIG_MSTAR_EDEN_PM) \
+                        $(CONFIG_MSTAR_MAYA_PM) \
+                        $(CONFIG_MSTAR_WHISKY_PM) \
+                        $(CONFIG_MSTAR_MELODY_PM) \
+                        $(CONFIG_MSTAR_EULER_PM) \
+                        $(CONFIG_MSTAR_NASA_PM)))
+$(O)/out/mboot.bin: $(O)/out/PM.bin
+else
+$(O)/out/mboot.bin: $(O)/out/sboot.bin
+endif
+else
+$(O)/out/mboot.bin: $(O)/out/sboot.bin
+ifeq ($(CONFIG_UBOOT_AS_2ND_LOADER), y)
+	$(Q)echo "  MERGE   $@"
+else
+	$(Q)echo "  MERGE   out/flash_with_ecos.bin"
+endif
+ifeq ($(CONFIG_BOOTING_FROM_EXT_SPI_WITH_CPU),y)
+	$(Q)cat $< > $@;
+    ifneq ($(CONFIG_PM_SIZE_KB_FORCED),0)
+	$(Q)cp $(PM_BIN) ./_PM.bin
+	$(Q)dd if=./_PM.bin of=./PM.bin bs=$(CONFIG_PM_SIZE_KB_FORCED)K count=1 1>/dev/null
+	$(Q)cat ./PM.bin >> $@;
+	$(Q)rm -f ./PM.bin
+    else
+        ifneq ($(CONFIG_DISABLE_PM_PARTITION),y)
+		$(Q)cat $(PM_BIN) >> $@;
+        endif
+    endif
+    ifeq ($(CONFIG_MSTAR_RT_PM_IN_SPI),y)
+	$(Q)cat $(RT_PM_BIN) >> $@;
+	$(Q)echo "   MERGE   RT_PM_BIN $(RT_PM_BIN)"
+    endif
+else ifeq ($(CONFIG_MSTAR_ROM_BOOT_WITH_NAND_FLASH), y)
+	$(Q)cat $< > $@;
+	$(Q)echo "  Copying HASH0_DAT.bin, NANDINFO.nni, PAIRPAGEMAP_v2.ppm and PARTITION_v2_default.pni"
+	$(Q)cp ../MstarCore/src/drivers/unfd/cis/NANDINFO.nni $(O)/out
+	$(Q)cp ../MstarCore/src/drivers/unfd/cis/PAIRPAGEMAP_v2.ppm $(O)/out
+ifeq ($(findstring y, $(CONFIG_MSTAR_NS_UBOOT) $(CONFIG_TEE_LOADER)),y)
+ifeq ($(CONFIG_ARMv7_OPTEE), y)
+	$(Q)cp ../MstarCore/src/drivers/unfd/cis/PARTITION_v2_optee_default.pni $(O)/out/PARTITION_v2_default.pni
+else
+	$(Q)cp ../MstarCore/src/drivers/unfd/cis/PARTITION_v2_armfw_optee_default.pni $(O)/out/PARTITION_v2_default.pni
+endif
+else
+       $(Q)cp ../MstarCore/src/drivers/unfd/cis/PARTITION_v2_default.pni $(O)/out
+endif
+	$(Q)cp ../MstarCore/src/drivers/unfd/cis/PARTITION_v2_default.pni $(O)/out
+	$(Q)cp $(HASH0_BIN) $(O)/out/HASH0_DAT.bin
+else ifeq ($(CONFIG_MSTAR_ROM_BOOT_WITH_EMMC_FLASH), y)
+	$(Q)[ '-f $@' ] && rm -rf $@
+else ifeq ($(CONFIG_MSTAR_ROM_BOOT_WITH_SPI_NOR_FLASH), y)
+	$(Q)[ '-f $@' ] && rm -rf $@
+else ifeq ($(CONFIG_MSTAR_ROM_BOOT_FOR_BUILD_PM_BIN), y)
+	$(Q)cat $< > $@;
+	$(Q)cat $(PM_BIN) >> $@;
+else #boot from 51
+	$(Q)echo "  PM_BIN: $(PM_BIN)"
+	$(Q)cat $(PM_BIN) > $@;
+	$(Q)cat $< >> $@;
+	$(Q)cat $(SECURITY_BIN) >> $@;
+endif
+
+ifeq (y, $(findstring y, $(CONFIG_MSTAR_ROM_BOOT_WITH_NAND_FLASH)\
+                         $(CONFIG_MSTAR_ROM_BOOT_WITH_EMMC_FLASH)\
+                         $(CONFIG_MSTAR_ROM_BOOT_WITH_SPI_NOR_FLASH)))
+
+    ifeq ($(CONFIG_MSTAR_AUTHEN_ENABLE), y)
+	$(Q)head -c 752 $(CHUNK_HEADER) > $(CHUNK_HEADER).tmp
+	$(Q)mv $(CHUNK_HEADER).tmp $(CHUNK_HEADER)
+        ifeq ($(CONFIG_REAL_KEY),y)
+	$(Q)$(TOOL_PATH)/grid.sh $(TOOL_PATH)/SubSecureInfoGen_boot.sh $(PROJDIR)/$(CHUNK_HEADER).signature.bin $(PROJDIR)/$(CHUNK_HEADER) 1 $(PROJECT) $(PROJDIR)/secure 0 8 0 $(BLOCK_SIZE) 0
+        else
+            ifeq ($(CONFIG_R2TEE_TEELOADER),y)
+	            $(Q)$(SECUREDIR)/SubSecureInfoGen.exe $(CHUNK_HEADER).signature.bin $(CHUNK_HEADER) $(RSA_IMAGE_PRIVATE_KEY) $(RSA_IMAGE_PUBLIC_KEY) 0 8 0 $(BLOCK_SIZE) 0 $(SECUREDIR)
+            else
+	            $(Q)$(SECUREDIR)/SubSecureInfoGen.exe $(CHUNK_HEADER).signature.bin $(CHUNK_HEADER) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 8 0 $(BLOCK_SIZE) 0 $(SECUREDIR)
+            endif
+        endif
+	$(Q)cat $(CHUNK_HEADER).signature.bin >> $(CHUNK_HEADER)
+    endif
+	mkdir -p $(PRODUCT_OUT)/unsigned
+	cp $(CHUNK_HEADER) $(PRODUCT_OUT)/unsigned/chunk_header.bin.unsigned
+	$(Q)cat $(CHUNK_HEADER)>> $@;
+
+ifeq ($(CONFIG_MTK_LOADER), y)
+	$(Q)echo "  CONFIG_MTK_LOADER:"
+	$(Q)echo " MERGE MTK_LOADER_BIN $@"
+	$(Q)cat $(MTK_LOADER_BIN)>> $@;
+	$(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+endif
+    ifneq ($(CONFIG_TEE_LOADER),y)
+    ifeq ($(CONFIG_DOUBLE_MBOOT), y)
+	$(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+	$(Q)cat $(HASH3_BIN)>> $@;
+	$(Q)cat $(HASH3_SIG)>> $@;
+	$(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+    else
+      ifeq ($(CONFIG_BOOTRAM_STORE_IN_MBOOT), y)
+		$(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+		$(Q)cat $(HASH2_BIN)>> $@;
+		$(Q)cat $(HASH2_SIG)>> $@;
+		$(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+      endif
+    endif
+      ifeq ($(CONFIG_UBOOT_VERSION_INFO), y)
+      # ***** ANTI_ROLLBACK MBOOT VERSION *****
+	$(Q)echo -ne \\x02\\x00\\x00\\x00 > $(INFO_BIN);
+	$(TOOLDIR)/align $(INFO_BIN) 0x200;
+	$(Q)cat $(INFO_BIN) >> $(UBOOT_BIN);
+      endif
+	cp $(UBOOT_BIN) $(PRODUCT_OUT)/unsigned/u-boot.bin
+	$(Q)cat $(UBOOT_BIN) >> $@;
+	$(Q)cp $(UBOOT_BIN) $(EA_UBOOTBIN);
+	$(Q)cat $(EA_UBOOTBIN) >> $(EA_BIN);
+    ifeq (y, $(findstring y, $(CONFIG_DOUBLE_MBOOT)\
+                             $(CONFIG_SECURITY_BOOT)$(CONFIG_MSTAR_NS_UBOOT) $(CONFIG_TEE_LOADER)))
+        ifeq ($(CONFIG_REAL_KEY),y)
+	$(Q)$(TOOL_PATH)/grid.sh $(TOOL_PATH)/SubSecureInfoGen_boot.sh $(PROJDIR)/$(UBOOT_BIN).signature.bin $(PROJDIR)/$(UBOOT_BIN) 1 $(PROJECT) $(PROJDIR)/secure 0 8 0 $(BLOCK_SIZE) 0
+        else ifeq ($(CONFIG_TEE_LOADER),y)
+		$(Q)$(SECUREDIR)/SubSecureInfoGen.exe $(UBOOT_BIN).signature.bin $(UBOOT_BIN) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 8 0 $(BLOCK_SIZE) 0 $(SECUREDIR)
+        else
+		$(Q)$(SECUREDIR)/SubSecureInfoGen.exe $(UBOOT_BIN).signature.bin $(UBOOT_BIN) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 8 0 $(BLOCK_SIZE) 0 $(SECUREDIR)
+		$(Q)$(SECUREDIR)/SubSecureInfoGen.exe $(EA_UBOOTBIN).signature.bin $(EA_UBOOTBIN) $(RSA_EA_PRIVATE_KEY) $(RSA_EA_PUBLIC_KEY) 0 8 0 $(BLOCK_SIZE) 0 $(SECUREDIR)
+        endif
+	$(Q)cat $(UBOOT_BIN).signature.bin >> $@
+	$(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+	$(Q)cat $(EA_UBOOTBIN).signature.bin >> $(EA_BIN)
+	$(Q)cat $(RSAEA_BIN) >> $(EA_BIN)
+	$(Q)cat $(RSAEA_BIN).sig.bin >> $(EA_BIN)
+    endif
+    ifeq ($(CONFIG_SECURITY_BOOT), y)
+	$(Q)cat $(SECURITY_BIN) >> $@
+    else ifeq ($(findstring y, $(CONFIG_MSTAR_NS_UBOOT) $(CONFIG_TEE_LOADER)),y)
+	$(Q)cat $(SECURITY_BIN) >> $@
+    endif
+    else
+	    $(Q)cat $(SECURITY_BIN) >> $@
+        ifeq ($(CONFIG_DOUBLE_MBOOT), y)
+	        $(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+	        $(Q)cat $(HASH3_BIN)>> $@;
+	        $(Q)cat $(HASH3_SIG)>> $@;
+	        $(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+        else
+            ifeq ($(CONFIG_BOOTRAM_STORE_IN_MBOOT), y)
+		        $(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+		        $(Q)cat $(HASH2_BIN)>> $@;
+		        $(Q)cat $(HASH2_SIG)>> $@;
+		        $(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+            endif
+        endif
+	    $(Q)cat $(UBOOT_BIN) >> $@;
+        ifeq ($(CONFIG_UBOOT_VERSION_INFO), y)
+	        $(Q)echo abc > $(INFO_BIN)
+	        $(TOOLDIR)/align $(INFO_BIN) 0x200;
+	        $(Q)cat $(INFO_BIN) >> $@;
+        endif
+        ifeq (y, $(findstring y, $(CONFIG_DOUBLE_MBOOT)\
+                                $(CONFIG_SECURITY_BOOT)$(CONFIG_MSTAR_NS_UBOOT) $(CONFIG_TEE_LOADER)))
+            ifeq ($(CONFIG_REAL_KEY),y)
+	            $(Q)$(TOOL_PATH)/grid.sh $(TOOL_PATH)/SubSecureInfoGen_boot.sh $(PROJDIR)/$(UBOOT_BIN).signature.bin $(PROJDIR)/$(UBOOT_BIN) 1 $(PROJECT) $(PROJDIR)/secure 0 8 0 $(BLOCK_SIZE) 0
+            else
+            ifeq ($(CONFIG_OPTEE_TEELOADER),y)
+	            $(Q)$(SECUREDIR)/SubSecureInfoGen.exe $(UBOOT_BIN).signature.bin $(UBOOT_BIN) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 8 0 $(BLOCK_SIZE) 0 $(SECUREDIR)
+            else
+	            $(Q)$(SECUREDIR)/SubSecureInfoGen.exe $(UBOOT_BIN).signature.bin $(UBOOT_BIN) $(RSA_IMAGE_PRIVATE_KEY) $(RSA_IMAGE_PUBLIC_KEY) 0 8 0 $(BLOCK_SIZE) 0 $(SECUREDIR)
+            endif
+            endif
+	        $(Q)cat $(UBOOT_BIN).signature.bin >> $@
+	        $(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);
+        endif
+    endif
+else
+	$(Q)cat $(CHUNK_HEADER)>> $@;
+	$(Q)cat $(UBOOT_BIN) >> $@;
+endif
+
+	$(Q)if [ $(LOGO_SIZE) != 0 ] ; then \
+			$(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);\
+			cat $(LOGO_SRC) >> $@;\
+        fi
+
+ifeq ($(CONFIG_BOOTING_FROM_OTP_WITH_PM51),y)
+	$(Q)[ '-f $(SIGNATURE_PM)' ] && rm -rf $(SIGNATURE_PM)
+	$(Q) $(SECUREDIR)/SubSecureInfoGen.exe $(SIGNATURE_PM) ./$(PM_BIN) $(PM_RAM_OFFSET) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 $(SECUREDIR)
+	$(Q)[ '-f $(SIGNATURE_SBOOT)' ] && rm -rf $(SIGNATURE_SBOOT)
+	$(Q) $(SECUREDIR)/SubSecureInfoGen.exe $(SIGNATURE_SBOOT) $(O)/out/sboot.bin $(SBOOT_RAM_OFFSET) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 $(SECUREDIR)
+	$(Q)[ '-f $(SIGNATURE_UBOOT)' ] && rm -rf $(SIGNATURE_UBOOT)
+	$(Q) $(SECUREDIR)/SubSecureInfoGen.exe $(SIGNATURE_UBOOT) ./$(UBOOT_BIN) $(_UBOOT_RAM_START) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 $(SECUREDIR)
+	$(Q)cat $(SIGNATURE_PM) >> $@
+	$(Q)cat $(SIGNATURE_SBOOT) >> $@
+	$(Q)cat $(SIGNATURE_UBOOT) >> $@
+endif
+ifneq ($(CONFIG_BOOTING_FROM_EXT_SPI_WITH_CPU),y)
+	$(Q) split -d -a 4 -b "65536" $@ $(O)/out/keybank.
+	$(Q) cp $(O)/out/keybank.0002 $(O)/out/customer_key_bank.bin
+	$(Q) rm $(O)/out/keybank.*
+endif
+	$(Q)$(TOOLDIR)/SeparateBin.exe $(PM_BIN) $(O)/out/$(DDR_BACKUP_BIN) 0xF200 0xE00
+	$(Q)$(SECUREDIR)/crc -a $(O)/out/$(DDR_BACKUP_BIN);
+
+ifeq ($(PARA),1)
+	@rm -f ./MBoot.bdf*
+	@find ../ -name "*.bdf" -exec cat {} >> ./MBoot.bdf.tmp \;
+	@mv ./MBoot.bdf.tmp ./MBoot.bdf
+endif
+
+ifneq ($(CONFIG_UBOOT_AS_2ND_LOADER), y)
+	$(Q)mv $@ $(O)/out/flash_with_ecos.bin;
+endif
+ifeq ($(CONFIG_MSTAR_ROM_BOOT_WITH_NAND_FLASH), y)
+	$(Q)./buildROMCodeBin.sh >/dev/null 2>&1
+endif
+endif
+
+
+
+
+
+
+ifeq ($(CONFIG_NON_OS), y)
+ifeq ($(CONFIG_MSTAR_MARIA10_PM),y)
+$(O)/out/mboot_rom.bin: $(O)/out/PM.bin
+else ifeq ($(CONFIG_MSTAR_MACAW12_PM),y)
+$(O)/out/mboot_rom.bin: $(O)/out/PM.bin
+else
+$(O)/out/mboot_rom.bin: $(O)/out/sboot.bin $(O)/out/sboot1.bin
+endif
+else
+$(O)/out/mboot_rom.bin: $(O)/out/sboot.bin $(O)/out/sboot1.bin
+	$(Q)echo "  MERGE   $@"
+ifeq ($(CONFIG_BOOTING_FROM_EXT_SPI_WITH_CPU),y)
+	$(Q)cat $< > $@;
+	$(Q)cat $(SBOOT1_BIN) >> $@;
+	#$(Q)cat $(PM_BIN) >> $@;
+else ifeq ($(CONFIG_MSTAR_ROM_BOOT_WITH_NAND_FLASH), y)
+	$(Q)cat $< > $@;
+	$(Q)cat $(SBOOT1_BIN) >> $@;
+	#$(Q)cat $(PM_BIN) >> $@;
+else
+	$(Q)cat $(PM_BIN) > $@;
+	$(Q)cat $< >> $@;
+	$(Q)cat $(SECURITY_BIN) >> $@;
+endif
+	cat $(CHUNK_HEADER) >> $@; \
+	cat $(UBOOT_BIN) >> $@; \
+	if [ $(LOGO_SIZE) != 0 ] ; then \
+            $(TOOLDIR)/align $@ $(MBOOT_ALIGNMENT_SIZE);\
+            cat $(LOGO_SRC) >> $@; \
+        fi
+
+ifeq ($(CONFIG_BOOTING_FROM_OTP_WITH_PM51),y)
+	$(Q)[ '-f $(SIGNATURE_PM)' ] && rm -rf $(SIGNATURE_PM)
+	$(Q) $(SECUREDIR)/SubSecureInfoGen.exe $(SIGNATURE_PM) ./$(PM_BIN) $(PM_RAM_OFFSET) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 $(SECUREDIR)
+	$(Q)[ '-f $(SIGNATURE_SBOOT)' ] && rm -rf $(SIGNATURE_SBOOT)
+	$(Q) $(SECUREDIR)/SubSecureInfoGen.exe $(SIGNATURE_SBOOT) $(O)/out/sboot.bin $(SBOOT_RAM_OFFSET) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 $(SECUREDIR)
+	$(Q)[ '-f $(SIGNATURE_UBOOT)' ] && rm -rf $(SIGNATURE_UBOOT)
+	$(Q) $(SECUREDIR)/SubSecureInfoGen.exe $(SIGNATURE_UBOOT) ./$(UBOOT_BIN) $(_UBOOT_RAM_START) $(RSA_BOOT_PRIVATE_KEY) $(RSA_BOOT_PUBLIC_KEY) 0 $(SECUREDIR)
+	$(Q)cat $(SIGNATURE_PM) >> $@
+	$(Q)cat $(SIGNATURE_SBOOT) >> $@
+	$(Q)cat $(SIGNATURE_UBOOT) >> $@
+endif
+ifneq ($(CONFIG_BOOTING_FROM_EXT_SPI_WITH_CPU),y)
+ifneq ($(CONFIG_MSTAR_ROM_BOOT_WITH_NAND_FLASH), y)
+	$(Q) split -d -a 4 -b "65536" $@ $(O)/out/keybank.
+	$(Q) cp $(O)/out/keybank.0002 $(O)/out/customer_key_bank.bin
+	$(Q) rm $(O)/out/keybank.*
+endif
+endif
+	$(Q)$(TOOLDIR)/SeparateBin.exe $(PM_BIN) $(O)/out/$(DDR_BACKUP_BIN) 0xF200 0xE00
+	$(Q)$(SECUREDIR)/crc -a $(O)/out/$(DDR_BACKUP_BIN);
+
+ifeq ($(PARA),1)
+	@rm -f ./MBoot.bdf*
+	@find ../ -name "*.bdf" -exec cat {} >> ./MBoot.bdf.tmp \;
+	@mv ./MBoot.bdf.tmp ./MBoot.bdf
+endif
+endif

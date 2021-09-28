@@ -1,0 +1,13 @@
+# Copyright (C) 2018 Amazon.com Inc. or its affiliates.  All Rights Reserved.
+
+[Defines]
+  DEC_SPECIFICATION              = 0x00010005
+  PACKAGE_NAME                   = ufbl-features
+  PACKAGE_GUID                   = 73df511d-41a4-4302-8d94-000f1462fd29
+  PACKAGE_VERSION                = 1.0
+
+
+[Includes.common]
+  include
+  features/idme
+  features/idme/include

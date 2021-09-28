@@ -1,0 +1,59 @@
+CFLAGS += -I$(srctree)/inc/M7322/board -I$(srctree)/src -I$(srctree)/src/M7322/include
+AFLAGS += -I$(srctree)/inc/M7322/board -I$(srctree)/src -I$(srctree)/src/M7322/include
+
+extra-y += sboot.lds
+ifneq ($(CONFIG_MSTAR_BUILD_TEE_LOADER_DAT), y)
+ifeq ($(CONFIG_TEE_LOADER),y)
+lib-y += TEE_loader.o
+lib-y += reeloader_entry.o
+endif
+lib-y += boot.o
+lib-y += bootram.o
+lib-y += bootram_cus_uboot2.o
+
+ifeq ($(CONFIG_MSTAR_ROM_BOOT_WITH_EMMC_FLASH), y)
+ifeq ($(CONFIG_DOUBLE_MBOOT), y)
+lib-y += bootram_hash.o
+endif
+endif
+lib-y += bootrom.o
+lib-y += bootrom_pll.o
+lib-y += bootrom_clock.o
+
+lib-y += bootrom_miu.o
+lib-y += bootrom_data_miu.o
+
+ifeq ($(CONFIG_MSTAR_STR_ENABLE), y)
+lib-y += bootrom_data_miu_str.o
+lib-y += bootrom_miu_str.o
+endif
+
+lib-y += bootrom_peripheral.o
+
+lib-y += bootrom_cache.o
+lib-y += drvPadConf.o
+
+lib-y += apiBDMA.o
+//lib-y += arm_compile.o
+lib-y += _dvmd_tls.o
+lib-y += _udivsi3.o
+
+lib-y-release += drvPadConf.o
+lib-y-release += bootrom_miu.o
+lib-y-release += bootrom_data_miu.o
+
+ifeq ($(CONFIG_MSTAR_STR_ENABLE), y)
+lib-y-release += bootrom_miu_str.o
+lib-y-release += bootrom_data_miu_str.o
+endif
+
+lib-y += bootrom_dqs.o
+else
+lib-y += bootram.o
+lib-y += apiBDMA.o
+lib-y += _dvmd_tls.o
+lib-y += _udivsi3.o
+endif
+ifeq ($(CONFIG_ONEBIN_ENABLE),y)
+lib-y += drvLoadTable.o
+endif

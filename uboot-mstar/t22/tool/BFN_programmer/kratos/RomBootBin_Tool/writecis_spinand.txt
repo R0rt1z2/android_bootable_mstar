@@ -1,0 +1,13 @@
+tftp 0x84000000 SPINANDINFO.sni
+
+tftp 0x84010000 PAIRPAGEMAP_v2.ppm
+
+tftp 0x84020000 PARTITION_v2_default.pni
+
+tftp 0x84030000 mboot.bin
+
+nand erase.force
+
+ncisbl 0x84000000 0x84010000 0x84020000 0x84030000 $(filesize)
+
+    

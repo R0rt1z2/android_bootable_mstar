@@ -1,0 +1,104 @@
+swch 4
+
+//<<CLKGEN_PM>>
+wriu -w 0x000e40 0x1008   // clk_mcu = 172M (step 1/2)
+wriu -w 0x000e40 0x5088   // clk_spi = 54M (step_1/2)
+                          
+//<<CLKGEN0>>
+//clk_bist
+wriu -w 0x100b02 0x0007  //Bit[3]: enable clk_bist //Bit[2:0]: SRAM bist test clk 7:xtal, 6:62M, 5:86M 4:108M 3:123M 2:144M 1:172M 0:216M
+
+//clk_mcu
+wriu -w 0x100b20 0x0400  //clk_mcu Switch to 172MHz
+wriu -w 0x100b20 0x0401  //Change clock from xtal to mcu
+
+//clk_uartx
+wriu -w 0x100b28 0x0000  //clk_uart1 = 172M (step_1/2) clk_uart2 = 172M (step_1/2)
+wriu -w 0x100b26 0x0c06  //clk_uart0 = 172MHz  clk_uart1 = 172M (step_2/2)  clk_uart2 = 172M (step_2/2)
+wriu -w 0x100b2a 0x0000  //clk_uart3 = 172MHz
+
+//clk_fuart
+wriu -w 0x100b2e 0x0008  //clk_fuart = 172MHz
+
+//clk_iicx
+wriu -w 0x100b60 0x0000  //clk_miic2 = 72MHz clk_miic1 = 72MHz clk_miic0 = 72MHz
+
+//clk_spi
+wriu -w 0x100b2c 0x0000  //clk_spi Switch to 108MHz
+wriu -w 0x100b2c 0x0020  //Change clock from xtal to clk_spi
+
+//TCK
+wriu -w 0x101e08 0x0010  //CLK_TCK_IN from PAD_FUART_TX
+wriu -w 0x100b34 0x0000  //clk_tck = CLK_TCK_IN
+
+//MIU
+wriu -w 0x100b3c 0x0100  // clk_mpll_syn = 432M (for VEPLL  0: 216M, 1:432M)
+wriu -w 0x100b3e 0x000c  // clk_miu = 216M  clk_miu_rec = 93K (clk_xtal/128)
+wriu -w 0x100bfc 0x0001  // clk_ddr_syn = 432M (for MEMPLL  0: 216M, 1:432M) //Kratos update
+
+//VE
+wriu -w 0x100b48 0x0800  // clk_ve = 27M  clk_vedac = 108M
+wriu -w 0x100b4a 0x001c  // clk_ve_in = 27M (clk_odclk)
+
+//TSP
+wriu -w 0x101e04 0x0001  // CLK_TS0_IN from PAD_TS0_CLK
+wriu -w 0x100b50 0x0000  // clk_ts0 = CLK_TS0_IN clk_ts1 = CLK_TS0_IN  clk_tsp = 144M
+wriu -w 0x100b54 0x0000  // clk_tsp = 144M clk_stc0 = 27M (STC0_SYNTH_OUT)
+
+//VD_MHEG5
+wriu -w 0x100b60 0x0000  //clk_vd_mheg5 160MHz
+
+//HVD
+wriu -w 0x100b62 0x0004  //clk_hvd 160MHz
+
+//JPD
+wriu -w 0x100b6a 0x0008  // ckg_jpg = 144M (0:72m 4:108m 8:144m c:192m)
+
+//MVD
+wriu -w 0x100b70 0x0000  //mvd_syn off
+wriu -w 0x100b72 0x0000  //clk_mvd = 144M clk_mvd2 = 144M
+
+wriu -w 0x100b74 0x0000  //clk_mvd_chroma on clk_mvd_luma_a on
+wriu -w 0x100b76 0x0000  //clk_mvd_luma_b on clk_mvd_luma_c on
+wriu -w 0x100b78 0x0000  //clk_mvd_rmem on   clk_mvd_rmem1 on
+
+//GOP
+wriu -w 0x100b80 0x0000  // clk_gopg0 = 27M (clk_odclk) clk_gopg1 = 27M (clk_odclk)
+wriu -w 0x100b82 0x0018  // clk_gopmix = 27M (clk_ve) clk_gopd = 27M (clk_odclk)
+wriu -w 0x100b84 0x0004  // clk_gopg2 = 192M (clk_idclk)  clk_gopg3 = 27M (clk_odclk)
+wriu -w 0x100b86 0x0000  // clk_psram0 on
+
+//GE
+wriu -w 0x100b90 0x000c  // clk_ge = 144M
+
+//STB_DC
+wriu -w 0x100b98 0x0018  // clk_dc0 = 192M
+
+//SC
+wriu -w 0x1033a2 0x0400  // clk_ficlk = 192M (clk_fclk)
+wriu -w 0x1033a4 0x1000  // clk_flck = 192M
+wriu -w 0x1033a6 0x000c  // clk_odclk = 27M (CLK_OUT_DAC/8) (output pixel clock)
+wriu -w 0x1033aa 0x000c  // clk_idclk = 192M (clk_dc0)
+wriu -w 0x1033b0 0x0c00  // clk_hdgen = 27M (clk_odlck)  clk_hdgen_fir = 27M (CLK_OUT_DAC/8) 
+wriu -w 0x1033b2 0x000c  // clk_dac1 = 108M (clk_vedac) (SD)  clk_dac2 = 27M (clk_hdgen_fir) (HD)
+wriu -w 0x1033b4 0x000c  // clk_dcs = 27M (CLK_OUT_DAC/8)  clk_dcs27 = 27M
+
+//HDMITX
+wriu -w 0x103350 0x0000  // clk_hdmitx = 27M (clk_hdgen)
+
+
+
+//Kratos add
+wriu -w 0x100be0 0x0000  //clk_vp8 = 192M
+wriu -w 0x100be2 0x0000  //clk_parser = 192M
+wriu -w 0x100be4 0x0000  //clk_ecc = xtal
+wriu -w 0x100bc0 0x0000  //clk_emac = 123M
+
+
+
+
+
+
+
+
+

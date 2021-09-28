@@ -1,0 +1,28 @@
+// Please note -- this is a representative set of error suppression
+//                options.  Please adjust to suit your own policies
+//                See  manual (chapter LIVING WITH LINT)
+//                for further details.
+
+co-gnu3.lnt
+
+
++macros
+
++libclass( ansi, angle )
+-elib(27)
+-elib(14)
+
+
+// Suppress error
+//-epn
+-w1
+-e46
+
+//The following are very frequent and just make a log file 50% bigger with no real information
+-e831 //reference cited in prior message
+-e830 //location  cited in prior message
+-e160
+-emacro(78,offsetof)
+-emacro(40,offsetof)
+
+//-os(LINT_LOG.txt)

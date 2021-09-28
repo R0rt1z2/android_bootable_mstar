@@ -1,0 +1,192 @@
+//================================================
+// Start MIU init !!!             
+//================================================
+wriu -w   0x101220  0x0000
+wriu -w   0x10121e  0x0c00
+wriu -w   0x10121e  0x0c00
+wriu -w   0x10121e  0x0c00
+wriu -w   0x10121e  0x0c01
+wriu -w   0x10121e  0x0c00
+wriu -w   0x101202  0x0000
+wriu -w   0x101246  0xfffe
+wriu -w   0x101266  0xffff
+wriu -w   0x101286  0xffff
+wriu -w   0x1012a6  0xffff
+//--------------------
+//set DDRPLL0 1600MHz
+//--------------------
+wriu -w   0x110d36  0x4000
+wriu -w   0x110d34  0x0400
+//1600
+wriu -w   0x110D30  0xE8BA  //792MHz
+wriu -w   0x110D32  0x0022
+//wriu -w   0x110d30  0x8f5c
+//wriu -w   0x110d32  0x0022
+//1333
+//wriu -w   0x110d30  0x7b7c
+//wriu -w   0x110d32  0x0029
+wriu -w   0x110d22  0x2000
+//Avoid DDRPLL unknown(MCLK05X & MCLK025X) by reset ddrat[28]
+wriu -w   0x110d24  0x2000
+wriu -w   0x110d24  0x3000
+wriu -w   0x110d24  0x2000
+//------------------
+// Wait PLL Stable
+//------------------
+wait 10
+//---------------------------
+//set DDR3_16_8X_CL11_1600
+//---------------------------
+wriu -w   0x101202  0x03a3
+wriu -w   0x101204  0x004a
+wriu -w   0x101206  0x1430 //[12:12] reg_cke_always_on	
+wriu -w   0x101208  0x1cbb
+wriu -w   0x10120a  0x2767
+wriu -w   0x10120c  0xb6c8
+wriu -w   0x10120e  0x4080
+wriu -w   0x101210  0x1d70
+wriu -w   0x101212  0x4004
+wriu -w   0x101214  0x8018
+wriu -w   0x101216  0xc000
+wriu -w   0x10122c  0x0000
+wriu -w   0x110d02  0xaaaa
+wriu -w   0x110d04  0x0080
+wriu -w   0x110d3c  0x1133
+wriu -w   0x110d4e  0x0033
+wriu -w   0x110d3e  0x1011
+wriu -w   0x110d4c  0x1133
+wriu -w   0x110d0a  0x1022
+wriu -w   0x110d50  0x1111
+wriu -w   0x110d38  0x0065
+wriu -w   0x110d3a  0x4042
+wriu -w   0x110d48  0x0033
+wriu -w   0x110d4a  0x0002
+wriu -w   0x110d52  0x0002
+wriu -w   0x110d74  0x2077
+wriu -w   0x110d78  0x0002 //[ 7: 0] reg_sel_vref  02
+wriu -w   0x110d7a  0x3800 //[15: 8] reg_sel_zq  38
+wriu -w   0x110d6c  0x5555
+wriu -w   0x110d6e  0x3344
+wriu -w   0x110d0e  0x00a7
+wriu -w   0x110d0e  0x00e7
+wriu -w   0x110d0e  0x00a7
+wriu -w   0x10121e  0x0c01 //miu software reset
+wriu -w   0x10121e  0x0c00
+wriu -w   0x110d00  0x0039
+wriu -w   0x110d00  0x0031
+wriu -w   0x110d00  0x0021 //[    9] reg_odt0_en
+                           //[   10] reg_odt1_en
+wriu -w   0x110d7c  0x000f //[    5] reg_ddr_tree_ldo_pd 0
+wriu -w   0x110d7e  0x0000
+wriu -w   0x110d54  0xc000 //[15:14] reg_cmd_mode_sel
+                           //00:default mode 01:2cmd mode 10:2cmd mode 11:2cmd mode(cs)
+wriu -w   0x110d08  0x00ff //[ 5: 0] reg_rx_en
+
+//-----------
+// DQSM RST  
+//-----------
+wriu -w   0x110d0e  0x00a7
+wriu -w   0x110d0e  0x00e7
+wriu -w   0x110d0e  0x00a7
+
+wriu -w   0x110d74  0x0007 //trig lvl
+wriu -w   0x110d58  0x1111 //cs drvn/drvp
+wriu -w   0x110d5c  0x3147 //drvn
+wriu -w   0x110d5e  0x3147 //drvp
+
+//wriu -w   0x110D28  0x0017   //SSC 1%
+//wriu -w   0x110D2A  0x03DE
+
+wriu -w   0x101200  0x0000
+//-----Wait 200us, (keep DRAM RESET = 0)-----
+wait 1
+wriu -w   0x101200  0x0008
+wriu -w   0x101200  0x000c
+//-----Wait 500us, (keep DRAM RESET = 1 , CKE = 0)-----
+wait 1
+wriu -w   0x101200  0x000e
+//-----Wait tXPR=400ns-----
+wait 1
+//--------Initial DRAM start here!!!
+wriu -w   0x101200  0x001f
+//-----Wait init done-----
+wait 100
+//--------Initial Done
+//--------DDR2 wait 400ns for tXPR(?), DDR3 wait 512T for tZQinit
+wait 1
+//analog de glitch
+//wriu -w   0x101246  0x7FFE
+//wriu -w   0x10121e  0x0c08
+//wriu -w   0x1012e0  0x0000
+//wriu -w   0x1012e2  0x0000
+//wriu -w   0x1012e4  0x0001
+//wriu -w   0x1012e6  0x0000
+//wriu -w   0x1012e8  0x5aa5
+//wriu -w   0x110d0e  0x00e7 //1 bit6
+//wriu -w   0x1012e0  0x0200
+//wriu -w   0x1012e0  0x0201
+//wriu -w   0x1012e8  0xffff
+//wriu -w   0x1012e8  0xffff
+//wriu -w   0x110d0e  0x00a7 //0 bit6 
+wait 1
+//-------------
+// BW setting  
+//-------------
+wriu -w   0x101240  0x8015
+wriu -w   0x101260  0x8015
+wriu -w   0x101280  0x8015
+wriu -w   0x1012a0  0x8015
+
+//$display($time," start to program DLL0 ");
+wriu -w   0x110d62  0x0032 //pulse width
+wriu -w   0x110d64  0xf200 //phase, code
+wriu -w   0x110d68  0x0020 //dll0_code
+wriu -w   0x110d6a  0x0020 //dll1_code
+wriu -w   0x110d60  0x000c //sw rst
+wriu -w   0x110d60  0x0008 //sw rst
+wriu -w   0x110d60  0x2370 //enable hw, dyn, rd_avg
+
+//---------------------------------
+// Pack setting                    
+//---------------------------------
+wriu -w   0x101228  0x4090
+//-------------------------
+// Reduce latency setting  
+//-------------------------
+wriu -w   0x10122a  0x0000
+wriu -w   0x1012d4  0x0000
+//------------------------------
+// unmask all                   
+//------------------------------
+wriu -w   0x10121a  0x0001
+wriu -w   0x101246  0x0000
+wriu -w   0x101266  0x0000
+wriu -w   0x101286  0x0000
+wriu -w   0x1012a6  0x0000
+wriu -w   0x10121e  0x1a08 //[    3] reg_sw_init_done
+                           //[12: 8] reg_sync_out_threshold
+                           //[   14] reg_cmd_fifo_4_stage ==> 1 
+wriu -w   0x1012fc  0x4400 //[13:12] reg_sync_in_stage_disp
+                           //[15:14] reg_sync_in_stage_others ==>0
+wriu -w   0x1012fe  0x00e1 //change post arbiter priority to 1 ==>0 ==>2 ==>3
+wriu -w   0x1012fe  0x01e1 
+wriu -w   0x1012fe  0x00e1 
+//=================================================================
+// End of MIU init !!!             
+//=================================================================
+wriu -w   0x1012f0  0x0000
+//-------------------------------
+//miu self test : mode 0007
+//-------------------------------
+wriu -w   0x1012fe  0x0087
+wriu -w   0x1012e0  0x0000
+wriu -w   0x1012e2  0x0000
+wriu -w   0x1012e4  0x0000
+wriu -w   0x1012e6  0x0080
+wriu -w   0x1012e8  0x5aa5
+wriu -w   0x1012d8  0x0000
+wriu -w   0x1012e0  0x0006
+wriu -w   0x1012e0  0x0007
+//-----------------------------
+//Wait for MIU self test result
+//-----------------------------
